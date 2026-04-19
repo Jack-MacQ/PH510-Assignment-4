@@ -11,6 +11,19 @@ probability distribution (known up to a normalisation constant), and
 statistical estimates of the energy and its variance are obtained from
 the sampled local energies.
 
+The implementation includes:
+    - a reusable Metropolis sampler based on log-probabilities,
+    - support for arbitrary probability densities and local-energy functions,
+    - equilibration and decorrelation control,
+    - estimation of statistical uncertainty via block averaging.
+
+Although Task 1 only requires evaluation of the energy and variance,
+this implementation is written as a general VMC engine and is
+demonstrated using the hydrogen 1s radial problem.
+
+This provides a flexible foundation for subsequent tasks involving
+parameter optimisation and more complex systems.
+
 Copyright (c) 2026 Jack MacQuarrie
 
 This code is released under the MIT License. See the LICENSE file in the
