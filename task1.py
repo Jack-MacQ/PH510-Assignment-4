@@ -38,7 +38,7 @@ class VMCConfig:
     n_samples: int = 200_000
     n_equilibration: int = 10_000
     decorrelation_steps: int = 5
-    proposal_width: flot = 1.0
+    proposal_width: float = 1.0
     initial_position: float = 1.0
     seed: int = 42
     block_size: int = 200
@@ -57,7 +57,7 @@ class VMCResult:
     n_blocks: int
 
     def __str__(self) -> str:
-        """Return a formated readable summary."""
+        """Return a formatted readable summary."""
         return (
             f"Energy           = {self.energy:+.8f} Hartree\n"
             f"Variance         = {self.variance:.8e} Hartree^2\n"
@@ -156,7 +156,7 @@ class MetropolisSampler1D:
         position : float
             Current position.
         log_prob_current : float
-            Current lg-probability.
+            Current log-probability.
 
         Returns
         -------
