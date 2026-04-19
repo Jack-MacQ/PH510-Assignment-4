@@ -248,3 +248,90 @@ def run_vmc_1d(
         block_size=config.block_size,
         n_blocks=n_blocks,
     )
+
+
+def hydrogen_log_radial_probability(alpha: float) -> ArrayLikeFunc:
+    """
+    Build the log of the unnormalised hydrogen radial probability.
+
+    For the 1s trial wavefunction psi_T(r, alpha) = alpha exp(-alpha r),
+    the radial probability density is proportional to
+
+        |psi_T(r)|^2 r^2 ~ exp(-2 alpha r) r^2
+
+    because the overall multiplicative constant cancels in Metropolis
+    sampling.
+
+    Parameters
+    ----------
+    alpha : float
+        Variational parameter, alpha > 0.
+
+    Returns
+    -------
+    callable
+        Function of radius returning log P(r) up to an additive constant.
+    """
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+
+    def log_prob(radius: float) -> float:
+        if radius <= 0.0:
+            return -np.inf
+        return 2.0 * math.log(radius) - 2.0 * alpha * radius
+
+    return log_prob
+
+
+def hydrogen_local_energy(alpha: float) -> ArrayLikeFunc:
+    """
+    Build the hydrogen 1s local-energy function.
+
+    Parameters
+    ----------
+    alpha : float
+        Variational parameter, alpha > 0.
+
+    Returns
+    -------
+    callable
+        Function of radius returning the local energy in Hartree.
+    """
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+
+    def local_energy(radius: float) -> float:
+        return -1.0 / radius - 0.5 * alpha * (alpha - 2.0 / radius)
+
+    return local_energy
+
+
+def hydrogen_demo(alpha: float = 1.0) -> VMCResult:
+    """
+    Run a demonstration VMC calculation for hydrogen 1s.
+
+    Parameters
+    ----------
+    alpha : float, optional
+        Variational parameter.
+
+    Returns
+    -------
+    VMCResult
+        VMC result for the chosen alpha.
+    """
+    config = VMCConfig(
+        n_samples=200_000,
+        n_equilibration=10_000,
+        decorrelation_steps=5,
+        proposal_width=1.0 / alpha,
+        initial_position=1.0 / alpha,
+        seed=42,
+        block_size=200,
+    )
+
+    return run_vmc_1d(
+        config=config,
+        log_prob_func=hydrogen_log_radial_probability(alpha),
+        local_energy_func=hydrogen_local_energy(alpha),
+    )
