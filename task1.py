@@ -174,3 +174,77 @@ class MetropolisSampler1D:
             return trial, log_prob_trial, True
 
         return position, log_prob_current, False
+
+
+def run_vmc_1d(
+    config: VMCConfig,
+    log_prob_func: ArrayLikeFunc,
+    local_energy_func: ArrayLikeFunc,
+) -> VMCResult:
+    """
+    Run a one-dimensional Variational Monte Carlo calculation.
+
+    Parameters
+    ----------
+    config : VMCConfig
+        Configuration parameters.
+    log_prob_func : callable
+        Function returning log of the unnormalised target probability.
+    local_energy_func : callable
+        Function returning the local energy at the sampled coordinate.
+
+    Returns
+    -------
+    VMCResult
+        Estimated energy, variance, standard error, and run statistics.
+    """
+    if config.n_samples < 2:
+        raise ValueError("n_samples must be at least 2.")
+    if config.n_equilibration < 0:
+        raise ValueError("n_equilibration must be non-negative.")
+    if config.decorrelation_steps < 1:
+        raise ValueError("decorrelation_steps must be at least 1.")
+    if config.initial_position <= 0.0:
+        raise ValueError("initial_position must be positive for this radial example.")
+
+    rng = np.random.default_rng(config.seed)
+    sampler = MetropolisSampler1D(
+        log_prob_func=log_prob_func,
+        proposal_width=config.proposal_width,
+        rng=rng,
+    )
+
+    position = config.initial_position
+    log_prob_current = log_prob_func(position)
+    if not np.isfinite(log_prob_current):
+        raise ValueError("initial_position has non-finite log probability.")
+
+    for _ in range(config.n_equilibration):
+        position, log_prob_current, _ = sampler.step(position, log_prob_current)
+
+    local_energies = np.empty(config.n_samples, dtype=np.float64)
+    accepted_moves = 0
+    total_moves = 0
+
+    for i in range(config.n_samples):
+        for _ in range(config.decorrelation_steps):
+            position, log_prob_current, accepted = sampler.step(position, log_prob_current)
+            accepted_moves += int(accepted)
+            total_moves += 1
+
+        local_energies[i] = local_energy_func(position)
+
+    energy = float(np.mean(local_energies))
+    variance = float(np.var(local_energies, ddof=1))
+    std_error, n_blocks = blocking_standard_error(local_energies, config.block_size)
+    acceptance_rate = accepted_moves / total_moves if total_moves > 0 else 0.0
+
+    return VMCResult(
+        energy=energy,
+        variance=variance,
+        std_error=std_error,
+        acceptance_rate=acceptance_rate,
+        n_samples=config.n_samples,
+        block_size=config.block_size,
+        n_blocks=n_blocks,
+    )
