@@ -335,3 +335,25 @@ def hydrogen_demo(alpha: float = 1.0) -> VMCResult:
         log_prob_func=hydrogen_log_radial_probability(alpha),
         local_energy_func=hydrogen_local_energy(alpha),
     )
+
+
+def main() -> None:
+    """Run the hydrogen Task 1 demonstration."""
+    alpha = 1.0
+    result = hydrogen_demo(alpha)
+
+    print("=" * 60)
+    print("PH510 Assignment 5 - Task 1")
+    print("Variational Monte Carlo engine")
+    print("Hydrogen 1s demonstration")
+    print("=" * 60)
+    print(f"alpha            = {alpha:.6f}")
+    print(result)
+    print("\nReference values at alpha = 1:")
+    print("Exact energy     = -0.50000000 Hartree")
+    print("Exact variance   = 0.00000000 Hartree^2")
+    print(f"|E + 0.5|        = {abs(result.energy + 0.5):.8e}")
+
+
+if __name__ == "__main__":
+    main()
