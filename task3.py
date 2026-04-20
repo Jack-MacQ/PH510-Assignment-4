@@ -477,3 +477,258 @@ def scan_alpha_beta(
 
     return results
 
+
+# ---------------------------------------------------------------------------
+# Readable output and diagnostic plots
+# ---------------------------------------------------------------------------
+
+def print_summary(results: list[BosonsResult]) -> None:
+    """
+    Print a formatted table summarising the parameter scan.
+
+    The table includes the estimated energy, variance, standard error, and
+    Metropolis acceptance rate at each sampled point in (alpha, beta).
+    """
+    best_energy = min(results, key=lambda r: r.energy)
+    best_variance = min(results, key=lambda r: r.variance)
+
+    header = (
+        f"{'alpha':>8}  {'beta':>8}  {'energy / Ha':>14}  "
+        f"{'std err':>12}  {'variance / Ha^2':>18}  {'accept':>8}"
+    )
+    separator = "-" * len(header)
+
+    print("=" * len(header))
+    print("PH510 Assignment 5 - Task 3")
+    print("Two hard-sphere bosons in a 2D harmonic trap")
+    print("=" * len(header))
+    print(header)
+    print(separator)
+
+    for res in results:
+        print(
+            f"{res.alpha:8.4f}  {res.beta:8.4f}  {res.energy:14.8f}  "
+            f"{res.std_error:12.4e}  {res.variance:18.8e}  "
+            f"{res.acceptance_rate:7.2%}"
+        )
+
+    print(separator)
+    print("Best energy:")
+    print(
+        f"  alpha = {best_energy.alpha:.4f}, beta = {best_energy.beta:.4f}, "
+        f"E = {best_energy.energy:.6f} +/- {best_energy.std_error:.2e} Ha"
+    )
+    print("Lowest variance:")
+    print(
+        f"  alpha = {best_variance.alpha:.4f}, beta = {best_variance.beta:.4f}, "
+        f"Var = {best_variance.variance:.4e} Ha^2"
+    )
+
+
+def save_results_txt(
+    results: list[BosonsResult],
+    final: BosonsResult,
+    filename: str = "task3_results.txt",
+) -> None:
+    """
+    Save the scan summary and final production result to a text file.
+
+    This provides a permanent record of both the coarse parameter search
+    and the final higher-statistics estimate at the selected optimum.
+    """
+    best_energy = min(results, key=lambda r: r.energy)
+    best_variance = min(results, key=lambda r: r.variance)
+
+    with open(filename, "w", encoding="utf-8") as fout:
+        fout.write("PH510 Assignment 5 - Task 3\n")
+        fout.write("Two hard-sphere bosons in a 2D harmonic trap\n\n")
+        fout.write(
+            f"{'alpha':>8}  {'beta':>8}  {'energy / Ha':>14}  "
+            f"{'std err':>12}  {'variance / Ha^2':>18}  {'accept':>8}\n"
+        )
+        fout.write("-" * 76 + "\n")
+        for res in results:
+            fout.write(
+                f"{res.alpha:8.4f}  {res.beta:8.4f}  {res.energy:14.8f}  "
+                f"{res.std_error:12.4e}  {res.variance:18.8e}  "
+                f"{res.acceptance_rate:7.2%}\n"
+            )
+        fout.write("-" * 76 + "\n")
+        fout.write(
+            f"Best energy:  alpha={best_energy.alpha:.4f}  "
+            f"beta={best_energy.beta:.4f}  "
+            f"E={best_energy.energy:.6f} +/- {best_energy.std_error:.2e} Ha\n"
+        )
+        fout.write(
+            f"Lowest variance:  alpha={best_variance.alpha:.4f}  "
+            f"beta={best_variance.beta:.4f}  "
+            f"Var={best_variance.variance:.4e} Ha^2\n"
+        )
+        fout.write("\n")
+        fout.write("Final high-statistics run:\n")
+        fout.write(f"  alpha = {final.alpha:.4f}\n")
+        fout.write(f"  beta = {final.beta:.4f}\n")
+        fout.write(f"  Energy = {final.energy:+.6f} Ha\n")
+        fout.write(f"  Std. error = {final.std_error:.2e} Ha\n")
+        fout.write(f"  Variance = {final.variance:.4e} Ha^2\n")
+        fout.write(f"  Acceptance rate = {final.acceptance_rate:.2%}\n")
+        fout.write(f"  Samples = {final.n_samples:,}\n")
+
+
+def plot_results(
+    results: list[BosonsResult],
+    alpha_values: np.ndarray,
+    beta_values: np.ndarray,
+) -> None:
+    """
+    Plot the energy surface and one-dimensional slices through the minimum.
+
+    The contour plot visualises the full scan in (alpha, beta), while the
+    slice plots show how the energy changes when each parameter is varied
+    through the location of the minimum found in the coarse scan.
+    """
+    n_alpha = len(alpha_values)
+    n_beta = len(beta_values)
+    energy_grid = np.array([r.energy for r in results]).reshape(n_alpha, n_beta)
+
+    best = min(results, key=lambda r: r.energy)
+    best_i = list(alpha_values).index(
+        min(alpha_values, key=lambda a: abs(a - best.alpha))
+    )
+    best_j = list(beta_values).index(
+        min(beta_values, key=lambda b: abs(b - best.beta))
+    )
+
+    plt.figure(figsize=(8, 6))
+    levels = np.linspace(energy_grid.min(), energy_grid.max(), 20)
+    cp = plt.contourf(
+        beta_values,
+        alpha_values,
+        energy_grid,
+        levels=levels,
+        cmap="viridis",
+    )
+    plt.colorbar(cp, label="Energy / Hartree")
+    plt.contour(
+        beta_values,
+        alpha_values,
+        energy_grid,
+        levels=levels,
+        colors="white",
+        alpha=0.3,
+    )
+    plt.plot(
+        best.beta,
+        best.alpha,
+        "r*",
+        markersize=14,
+        label=(
+            rf"min E = {best.energy:.4f} Ha "
+            rf"($\alpha$={best.alpha:.3f}, $\beta$={best.beta:.3f})"
+        ),
+    )
+    plt.xlabel(r"$\beta$")
+    plt.ylabel(r"$\alpha$")
+    plt.title("Boson VMC energy surface")
+    plt.legend(fontsize=9)
+    plt.tight_layout()
+    plt.savefig("task3_energy_surface.png", dpi=300)
+    plt.show()
+
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    e_vs_alpha = energy_grid[:, best_j]
+    err_vs_alpha = np.array(
+        [results[i * n_beta + best_j].std_error for i in range(n_alpha)]
+    )
+    ax1.errorbar(alpha_values, e_vs_alpha, yerr=err_vs_alpha, fmt="o-", capsize=4)
+    ax1.axvline(
+        best.alpha,
+        color="r",
+        linestyle="--",
+        label=rf"$\alpha_\mathrm{{opt}}$ = {best.alpha:.3f}",
+    )
+    ax1.set_xlabel(r"$\alpha$")
+    ax1.set_ylabel("Energy / Hartree")
+    ax1.set_title(rf"Energy vs $\alpha$  ($\beta$ = {beta_values[best_j]:.3f})")
+    ax1.grid(True, linestyle=":")
+    ax1.legend()
+
+    e_vs_beta = energy_grid[best_i, :]
+    err_vs_beta = np.array(
+        [results[best_i * n_beta + j].std_error for j in range(n_beta)]
+    )
+    ax2.errorbar(beta_values, e_vs_beta, yerr=err_vs_beta, fmt="o-", capsize=4)
+    ax2.axvline(
+        best.beta,
+        color="r",
+        linestyle="--",
+        label=rf"$\beta_\mathrm{{opt}}$ = {best.beta:.3f}",
+    )
+    ax2.set_xlabel(r"$\beta$")
+    ax2.set_ylabel("Energy / Hartree")
+    ax2.set_title(rf"Energy vs $\beta$  ($\alpha$ = {alpha_values[best_i]:.3f})")
+    ax2.grid(True, linestyle=":")
+    ax2.legend()
+
+    plt.tight_layout()
+    plt.savefig("task3_energy_slices.png", dpi=300)
+    plt.show()
+
+
+# ---------------------------------------------------------------------------
+# Main program
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """
+    Run the full Task 3 workflow.
+
+    The calculation first performs a coarse scan over the variational
+    parameters to locate the lowest-energy region of parameter space. A
+    final higher-statistics calculation is then performed at the selected
+    optimum to obtain the reported ground-state estimate.
+
+    For a very small hard-sphere diameter, the interaction acts only as a
+    weak perturbation on the non-interacting two-particle oscillator
+    ground state. In that limit one expects the optimal alpha to remain
+    close to unity, while sufficiently large beta values suppress the
+    Jastrow correction and recover the pure Gaussian form.
+    """
+    alpha_values = np.linspace(0.5, 1.5, 11)
+    beta_values = np.array([0.1, 0.2, 0.4, 0.6, 1.0, 2.0, 3.5, 5.0])
+
+    print("Running (alpha, beta) scan ...")
+    results = scan_alpha_beta(alpha_values, beta_values)
+    print_summary(results)
+    plot_results(results, alpha_values, beta_values)
+
+    best = min(results, key=lambda r: r.energy)
+
+    print("\nHigh-statistics run at best parameters ...")
+    config_final = BosonsConfig(
+        n_samples=200_000,
+        n_equilibration=10_000,
+        decorrelation_steps=5,
+        proposal_width=0.8 / math.sqrt(best.alpha),
+        seed=1729,
+        block_size=200,
+    )
+    final = run_bosons_vmc(config_final, best.alpha, best.beta)
+
+    save_results_txt(results, final)
+
+    print("=" * 60)
+    print("PH510 Assignment 5 - Task 3  -  Best solution")
+    print("=" * 60)
+    print(f"alpha            = {final.alpha:.4f}")
+    print(f"beta             = {final.beta:.4f}")
+    print(f"Energy           = {final.energy:+.6f} Ha")
+    print(f"Std. error       = {final.std_error:.2e} Ha")
+    print(f"Variance         = {final.variance:.4e} Ha^2")
+    print(f"Acceptance rate  = {final.acceptance_rate:.2%}")
+    print(f"Samples          = {final.n_samples:,}")
+
+
+if __name__ == "__main__":
+    main()
