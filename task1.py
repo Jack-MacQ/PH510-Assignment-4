@@ -72,9 +72,9 @@ class VMCResult:
     def __str__(self) -> str:
         """Return a formatted readable summary."""
         return (
-            f"Energy           = {self.energy:+.8f} Hartree\n"
-            f"Variance         = {self.variance:.8e} Hartree^2\n"
-            f"Std. error       = {self.std_error:.8e} Hartree\n"
+            f"Energy           = {self.energy:+.2f} Hartree\n"
+            f"Variance         = {self.variance:.2e} Hartree^2\n"
+            f"Std. error       = {self.std_error:.2e} Hartree\n"
             f"Acceptance rate  = {self.acceptance_rate:.2%}\n"
             f"Samples          = {self.n_samples:,}\n"
             f"Block size       = {self.block_size}\n"
@@ -352,7 +352,7 @@ def hydrogen_demo(alpha: float = 1.0) -> VMCResult:
 
 def main() -> None:
     """Run the hydrogen Task 1 demonstration."""
-    alpha = 1.0
+    alpha = 1.0e0
     result = hydrogen_demo(alpha)
 
     print("=" * 60)
@@ -360,12 +360,12 @@ def main() -> None:
     print("Variational Monte Carlo engine")
     print("Hydrogen 1s demonstration")
     print("=" * 60)
-    print(f"alpha            = {alpha:.6f}")
+    print(f"alpha            = {alpha:.2f}")
     print(result)
     print("\nReference values at alpha = 1:")
-    print("Exact energy     = -0.50000000 Hartree")
-    print("Exact variance   = 0.00000000 Hartree^2")
-    print(f"|E + 0.5|        = {abs(result.energy + 0.5):.8e}")
+    print("Exact energy     = -0.50 Hartree")
+    print("Exact variance   = 0.00 Hartree^2")
+    print(f"|E + 0.5|        = {abs(result.energy + 0.5):.2e}")
 
 
 if __name__ == "__main__":
