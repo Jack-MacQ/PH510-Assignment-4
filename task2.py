@@ -112,3 +112,37 @@ class MetropolisSampler1D:
             return trial, log_prob_trial, True
 
         return position, log_prob_current, False
+
+
+def blocking_standard_error(values: np.ndarray, block_size: int) -> Tuple[float, int]:
+    """
+    Estimate the standard error of the mean using block averaging.
+
+    Consecutive Metropolis samples are correlated, so the naive estimate
+    sigma / sqrt(N) can understate the true uncertainty. Block averaging
+    partially corrects for this by grouping neighbouring samples into
+    larger, approximately independent blocks.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Array of sampled values.
+    block_size : int
+        Number of consecutive samples in each block.
+
+    Returns
+    -------
+    Tuple[float, int]
+        Estimated standard error and the number of complete blocks used.
+    """
+    if block_size < 1:
+        raise ValueError("block_size must be at least 1.")
+
+    n_blocks = values.size // block_size
+    if n_blocks < 2:
+        raise ValueError("Need at least two complete blocks.")
+
+    trimmed = values[: n_blocks * block_size]
+    block_means = trimmed.reshape(n_blocks, block_size).mean(axis=1)
+    std_error = float(np.sqrt(np.var(block_means, ddof=1) / n_blocks))
+    return std_error, n_blocks
