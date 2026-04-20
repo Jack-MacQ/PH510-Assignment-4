@@ -331,3 +331,99 @@ def blocking_standard_error(
     return std_error, n_blocks
 
 
+# ---------------------------------------------------------------------------
+# Core VMC routine for a single choice of variational parameters
+# ---------------------------------------------------------------------------
+
+# pylint: disable=too-many-locals
+def run_bosons_vmc(
+    config: BosonsConfig,
+    alpha: float,
+    beta: float,
+) -> BosonsResult:
+    """
+    Perform one VMC calculation for the two-boson system.
+
+    The Metropolis chain first undergoes an equilibration stage, after
+    which local-energy samples are accumulated during the production run.
+    A small number of Metropolis updates is inserted between recorded
+    samples in order to reduce autocorrelation.
+
+    Parameters
+    ----------
+    config : BosonsConfig
+        Numerical control parameters for the run.
+    alpha : float
+        Gaussian variational parameter.
+    beta : float
+        Jastrow variational parameter.
+
+    Returns
+    -------
+    BosonsResult
+        Estimated energy, variance, statistical uncertainty, and
+        acceptance rate for this parameter pair.
+    """
+    if config.n_samples < 2:
+        raise ValueError("n_samples must be at least 2.")
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+    if beta <= 0.0:
+        raise ValueError("beta must be positive.")
+
+    a = config.hard_sphere_diameter
+    rng = np.random.default_rng(config.seed)
+
+    log_prob_func = bosons_log_probability(alpha, beta, a)
+    local_energy_func = bosons_local_energy(alpha, beta, a)
+
+    sampler = MetropolisSamplerND(
+        log_prob_func=log_prob_func,
+        proposal_width=config.proposal_width,
+        rng=rng,
+    )
+
+    # Start from a symmetric configuration with the particles separated by
+    # roughly the oscillator length scale.
+    r0 = 1.0 / math.sqrt(2.0 * alpha)
+    position = np.array([r0, 0.0, -r0, 0.0])
+    log_prob_current = log_prob_func(position)
+
+    if not np.isfinite(log_prob_current):
+        raise ValueError("Initial position has non-finite log probability.")
+
+    # Burn-in stage: allow the chain to relax towards the target
+    # distribution before measurements are recorded.
+    for _ in range(config.n_equilibration):
+        position, log_prob_current, _ = sampler.step(position, log_prob_current)
+
+    local_energies = np.empty(config.n_samples, dtype=np.float64)
+    accepted_moves = 0
+    total_moves = 0
+
+    # Production stage: collect local-energy samples from the equilibrated
+    # Markov chain.
+    for i in range(config.n_samples):
+        for _ in range(config.decorrelation_steps):
+            position, log_prob_current, accepted = sampler.step(
+                position, log_prob_current
+            )
+            accepted_moves += int(accepted)
+            total_moves += 1
+        local_energies[i] = local_energy_func(position)
+
+    energy = float(np.mean(local_energies))
+    variance = float(np.var(local_energies, ddof=1))
+    std_error, _ = blocking_standard_error(local_energies, config.block_size)
+    acceptance_rate = accepted_moves / total_moves if total_moves > 0 else 0.0
+
+    return BosonsResult(
+        alpha=alpha,
+        beta=beta,
+        energy=energy,
+        variance=variance,
+        std_error=std_error,
+        acceptance_rate=acceptance_rate,
+        n_samples=config.n_samples,
+    )
+
