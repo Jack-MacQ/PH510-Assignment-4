@@ -327,7 +327,7 @@ def scan_alpha(alpha_values: np.ndarray, base_seed: int = 42) -> list[VMCResult]
             n_samples=100_000,
             n_equilibration=10_000,
             decorrelation_steps=5,
-            proposal_width=1.0 / alpha,
+            proposal_width=1.75 / alpha,
             initial_position=1.0 / alpha,
             seed=base_seed + i,
             block_size=100,
@@ -367,15 +367,15 @@ def print_summary(results: list[VMCResult]) -> None:
     print("-" * 86)
     print("Best energy:")
     print(
-        f"  alpha = {best_energy.alpha:.6f}, "
-        f"E = {best_energy.energy:.8f} +/- {best_energy.std_error:.2e} Ha"
+        f"  alpha = {best_energy.alpha:.2f}, "
+        f"E = {best_energy.energy:.2f} +/- {best_energy.std_error:.2e} Ha"
     )
     print("Lowest variance:")
     print(
-        f"  alpha = {best_variance.alpha:.6f}, "
-        f"Var = {best_variance.variance:.8e} Ha^2"
+        f"  alpha = {best_variance.alpha:.2f}, "
+        f"Var = {best_variance.variance:.2e} Ha^2"
     )
-    print("Exact hydrogen ground-state energy: -0.50000000 Ha")
+    print("Exact hydrogen ground-state energy: -0.50 Ha")
 
 
 def save_results_txt(
@@ -412,15 +412,15 @@ def save_results_txt(
         file_out.write("-" * 86 + "\n")
         file_out.write("Best energy:\n")
         file_out.write(
-            f"  alpha = {best_energy.alpha:.6f}, "
-            f"E = {best_energy.energy:.8f} +/- {best_energy.std_error:.2e} Ha\n"
+            f"  alpha = {best_energy.alpha:.2f}, "
+            f"E = {best_energy.energy:.2f} +/- {best_energy.std_error:.2e} Ha\n"
         )
         file_out.write("Lowest variance:\n")
         file_out.write(
-            f"  alpha = {best_variance.alpha:.6f}, "
-            f"Var = {best_variance.variance:.8e} Ha^2\n"
+            f"  alpha = {best_variance.alpha:.2f}, "
+            f"Var = {best_variance.variance:.2e} Ha^2\n"
         )
-        file_out.write("Exact hydrogen ground-state energy: -0.50000000 Ha\n")
+        file_out.write("Exact hydrogen ground-state energy: -0.50 Ha\n")
 
 
 def plot_results(results: list[VMCResult]) -> None:
