@@ -201,3 +201,87 @@ def hydrogen_local_energy(alpha: float) -> ArrayFunc:
         return -1.0 / radius - 0.5 * alpha * (alpha - 2.0 / radius)
 
     return local_energy
+
+
+def run_vmc(config: VMCConfig, alpha: float) -> VMCResult:
+    """
+    Run one VMC calculation for a given alpha.
+
+    The Markov chain is first equilibrated, then local-energy samples are
+    collected during the production phase. A small number of additional
+    Metropolis steps can be inserted between recorded samples to reduce
+    autocorrelation.
+
+    Parameters
+    ----------
+    config : VMCConfig
+        Numerical settings for the run.
+    alpha : float
+        Variational parameter for the hydrogen trial wavefunction.
+
+    Returns
+    -------
+    VMCResult
+        Energy, variance, standard error, and basic sampling statistics.
+    """
+    if config.n_samples < 2:
+        raise ValueError("n_samples must be at least 2.")
+    if config.n_equilibration < 0:
+        raise ValueError("n_equilibration must be non-negative.")
+    if config.decorrelation_steps < 1:
+        raise ValueError("decorrelation_steps must be at least 1.")
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+
+    rng = np.random.default_rng(config.seed)
+    log_prob_func = hydrogen_log_radial_probability(alpha)
+    local_energy_func = hydrogen_local_energy(alpha)
+
+    sampler = MetropolisSampler1D(
+        log_prob_func=log_prob_func,
+        proposal_width=config.proposal_width,
+        rng=rng,
+    )
+
+    position = config.initial_position
+    log_prob_current = log_prob_func(position)
+
+    if not np.isfinite(log_prob_current):
+        raise ValueError("Initial position has non-finite log probability.")
+
+    # Equilibration stage: allow the Markov chain to relax before sampling.
+    for _ in range(config.n_equilibration):
+        position, log_prob_current, _ = sampler.step(position, log_prob_current)
+
+    local_energies = np.empty(config.n_samples, dtype=np.float64)
+    accepted_moves = 0
+    total_moves = 0
+
+    # Production stage: record one local-energy sample after each set of
+    # decorrelation moves.
+    for i in range(config.n_samples):
+        for _ in range(config.decorrelation_steps):
+            position, log_prob_current, accepted = sampler.step(
+                position, log_prob_current
+            )
+            accepted_moves += int(accepted)
+            total_moves += 1
+
+        local_energies[i] = local_energy_func(position)
+
+    energy = float(np.mean(local_energies))
+    variance = float(np.var(local_energies, ddof=1))
+    std_error, n_blocks = blocking_standard_error(local_energies, config.block_size)
+    acceptance_rate = accepted_moves / total_moves if total_moves > 0 else 0.0
+
+    return VMCResult(
+        alpha=alpha,
+        energy=energy,
+        variance=variance,
+        std_error=std_error,
+        acceptance_rate=acceptance_rate,
+        n_samples=config.n_samples,
+        block_size=config.block_size,
+        n_blocks=n_blocks,
+    )
+
