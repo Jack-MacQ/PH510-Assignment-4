@@ -146,3 +146,58 @@ def blocking_standard_error(values: np.ndarray, block_size: int) -> Tuple[float,
     block_means = trimmed.reshape(n_blocks, block_size).mean(axis=1)
     std_error = float(np.sqrt(np.var(block_means, ddof=1) / n_blocks))
     return std_error, n_blocks
+
+
+def hydrogen_log_radial_probability(alpha: float) -> ArrayFunc:
+    """
+    Return the log of the unnormalised radial probability density.
+
+    For the hydrogen 1s trial wavefunction, the radial probability
+    density is proportional to |psi(r)|^2 r^2. The overall normalisation
+    constant is omitted, since it cancels in the Metropolis acceptance
+    ratio.
+
+    Parameters
+    ----------
+    alpha : float
+        Positive variational parameter.
+
+    Returns
+    -------
+    callable
+        Function returning log P(r) up to an additive constant.
+    """
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+
+    def log_prob(radius: float) -> float:
+        """Evaluate the log radial probability density at radius r."""
+        if radius <= 0.0:
+            return -np.inf
+        return 2.0 * math.log(radius) - 2.0 * alpha * radius
+
+    return log_prob
+
+
+def hydrogen_local_energy(alpha: float) -> ArrayFunc:
+    """
+    Return the analytical local-energy function for the hydrogen trial state.
+
+    Parameters
+    ----------
+    alpha : float
+        Positive variational parameter.
+
+    Returns
+    -------
+    callable
+        Function returning the local energy in Hartree.
+    """
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+
+    def local_energy(radius: float) -> float:
+        """Evaluate the local energy at radius r."""
+        return -1.0 / radius - 0.5 * alpha * (alpha - 2.0 / radius)
+
+    return local_energy
