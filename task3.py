@@ -427,3 +427,53 @@ def run_bosons_vmc(
         n_samples=config.n_samples,
     )
 
+
+# ---------------------------------------------------------------------------
+# Parameter-space scan over the variational ansatz
+# ---------------------------------------------------------------------------
+
+def scan_alpha_beta(
+    alpha_values: np.ndarray,
+    beta_values: np.ndarray,
+    base_seed: int = 42,
+) -> list[BosonsResult]:
+    """
+    Scan the variational parameter space defined by alpha and beta.
+
+    Each grid point is evaluated with an independent seed so that separate
+    parameter values do not reuse the same random sequence. The proposal
+    width is scaled with 1/sqrt(alpha), which roughly follows the natural
+    oscillator length scale of the Gaussian factor.
+
+    Parameters
+    ----------
+    alpha_values : numpy.ndarray
+        Array of Gaussian width parameters to test.
+    beta_values : numpy.ndarray
+        Array of Jastrow correlation parameters to test.
+    base_seed : int, optional
+        Base random seed for the scan.
+
+    Returns
+    -------
+    list[BosonsResult]
+        List of results ordered with alpha varying slowest and beta
+        varying fastest.
+    """
+    results: list[BosonsResult] = []
+    n_beta = len(beta_values)
+
+    for i, alpha in enumerate(alpha_values):
+        for j, beta in enumerate(beta_values):
+            config = BosonsConfig(
+                n_samples=50_000,
+                n_equilibration=5_000,
+                decorrelation_steps=5,
+                proposal_width=0.8 / math.sqrt(alpha),
+                seed=base_seed + i * n_beta + j,
+                block_size=100,
+            )
+            results.append(run_bosons_vmc(config, alpha, beta))
+
+    return results
+
