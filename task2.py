@@ -361,3 +361,57 @@ def print_summary(results: list[VMCResult]) -> None:
         f"Var = {best_variance.variance:.8e} Ha^2"
     )
     print("Exact hydrogen ground-state energy: -0.50000000 Ha")
+
+
+def plot_results(results: list[VMCResult]) -> None:
+    """
+    Plot the energy and variance as functions of alpha.
+
+    Two figures are produced: one showing the energy with error bars and
+    the exact value for comparison, and one showing the variance across
+    the scan.
+    """
+    alpha_vals = np.array([res.alpha for res in results], dtype=float)
+    energies = np.array([res.energy for res in results], dtype=float)
+    errors = np.array([res.std_error for res in results], dtype=float)
+    variances = np.array([res.variance for res in results], dtype=float)
+
+    plt.figure(figsize=(8, 5))
+    plt.errorbar(alpha_vals, energies, yerr=errors, fmt="o-", capsize=3)
+    plt.axhline(-0.5, linestyle="--", label="Exact energy")
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel("Energy / Hartree")
+    plt.title("Hydrogen 1s VMC energy")
+    plt.grid(True, linestyle=":")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("task2_energy_vs_alpha.png", dpi=300)
+    plt.show()
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(alpha_vals, variances, "o-")
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel(r"Variance / Hartree$^2$")
+    plt.title("Hydrogen 1s VMC variance")
+    plt.grid(True, linestyle=":")
+    plt.tight_layout()
+    plt.savefig("task2_variance_vs_alpha.png", dpi=300)
+    plt.show()
+
+
+def main() -> None:
+    """
+    Run the hydrogen alpha scan and generate the summary output.
+
+    The scan range can be adjusted here if a finer search around the
+    minimum is required.
+    """
+    alpha_values = np.linspace(0.5, 1.5, 21)
+    results = scan_alpha(alpha_values)
+    print_summary(results)
+    save_results_txt(results)
+    plot_results(results)
+
+
+if __name__ == "__main__":
+    main()
