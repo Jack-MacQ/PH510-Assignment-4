@@ -35,7 +35,7 @@ Python Version: 3.9.21
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 import math
 import numpy as np
@@ -99,7 +99,7 @@ def blocking_standard_error(values: np.ndarray, block_size: int) -> Tuple[float,
 
     Returns
     -------
-    tuple[int, float]
+    tuple[float, int]
         Standard error estimate and number of complete blocks used.
 
     Raises
@@ -122,6 +122,7 @@ def blocking_standard_error(values: np.ndarray, block_size: int) -> Tuple[float,
     return std_error, n_blocks
 
 
+# pylint: disable=too-few-public-methods
 class MetropolisSampler1D:
     """
     One-dimensional Metropolis sampler.
@@ -155,7 +156,11 @@ class MetropolisSampler1D:
         self.proposal_width = proposal_width
         self.rng = rng
 
-    def step(self, position: float, log_prob_current: float) -> Tuple[float, float, bool]:
+    def step(
+        self,
+        position: float,
+        log_prob_current: float,
+    ) -> Tuple[float, float, bool]:
         """
         Perform one Metropolis update.
 
@@ -189,6 +194,7 @@ class MetropolisSampler1D:
         return position, log_prob_current, False
 
 
+# pylint: disable=too-many-locals
 def run_vmc_1d(
     config: VMCConfig,
     log_prob_func: ArrayLikeFunc,
@@ -241,7 +247,9 @@ def run_vmc_1d(
 
     for i in range(config.n_samples):
         for _ in range(config.decorrelation_steps):
-            position, log_prob_current, accepted = sampler.step(position, log_prob_current)
+            position, log_prob_current, accepted = sampler.step(
+                position, log_prob_current
+            )
             accepted_moves += int(accepted)
             total_moves += 1
 
