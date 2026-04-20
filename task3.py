@@ -151,3 +151,142 @@ class MetropolisSamplerND:
             return trial, log_prob_trial, True
 
         return position, log_prob_current, False
+
+
+# ---------------------------------------------------------------------------
+# Trial state: probability density and analytical local energy
+# ---------------------------------------------------------------------------
+
+def bosons_log_probability(
+    alpha: float,
+    beta: float,
+    hard_sphere_diameter: float,
+) -> Callable[[np.ndarray], float]:
+    """
+    Construct log P(R) for the two-boson trial wavefunction.
+
+    For the variational ansatz
+
+        Psi_T(R) = exp[-alpha R^2 / 2 + r12 / (1 + beta r12)],
+
+    the corresponding sampling density is proportional to |Psi_T|^2, so
+
+        log P(R) = -alpha R^2 + 2 r12 / (1 + beta r12),
+
+    up to an additive normalisation constant. Configurations inside the
+    hard core, r12 <= a, are forbidden and are therefore assigned
+    log P = -inf.
+
+    Parameters
+    ----------
+    alpha : float
+        Gaussian width parameter.
+    beta : float
+        Jastrow correlation parameter.
+    hard_sphere_diameter : float
+        Hard-sphere diameter a.
+
+    Returns
+    -------
+    callable
+        Function mapping a configuration vector [x1, y1, x2, y2] to the
+        logarithm of the unnormalised sampling density.
+    """
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+    if beta <= 0.0:
+        raise ValueError("beta must be positive.")
+    if hard_sphere_diameter <= 0.0:
+        raise ValueError("hard_sphere_diameter must be positive.")
+
+    def log_prob(r: np.ndarray) -> float:
+        """
+        Evaluate the unnormalised log-probability at a given configuration.
+        """
+        dx = r[0] - r[2]
+        dy = r[1] - r[3]
+        r12 = math.sqrt(dx * dx + dy * dy)
+
+        if r12 <= hard_sphere_diameter:
+            return -np.inf
+
+        r_sq = r[0] ** 2 + r[1] ** 2 + r[2] ** 2 + r[3] ** 2
+        jastrow = r12 / (1.0 + beta * r12)
+        return -alpha * r_sq + 2.0 * jastrow
+
+    return log_prob
+
+
+def bosons_local_energy(
+    alpha: float,
+    beta: float,
+    hard_sphere_diameter: float,
+) -> Callable[[np.ndarray], float]:
+    """
+    Construct the analytical local energy for the two-boson trial state.
+
+    The local energy is defined by
+
+        E_L(R) = H Psi_T(R) / Psi_T(R),
+
+    with the Hamiltonian consisting of two 2D kinetic-energy operators and
+    a harmonic trapping potential V = R^2 / 2 in oscillator units. For the
+    present Gaussian-Jastrow ansatz, the result can be written as
+
+        E_L = 2*alpha + R^2*(1/2 - alpha^2/2)
+              + alpha*r12*f - f/r12 + 2*beta*f/b - f^2,
+
+    where
+        b = 1 + beta*r12,
+        f = 1 / b^2.
+
+    The first term represents the one-body oscillator contribution, while
+    the remaining terms arise from the correlation factor.
+
+    Parameters
+    ----------
+    alpha : float
+        Gaussian width parameter.
+    beta : float
+        Jastrow correlation parameter.
+    hard_sphere_diameter : float
+        Hard-sphere diameter a. Forbidden configurations are assigned an
+        infinite local energy, although these should never be sampled.
+
+    Returns
+    -------
+    callable
+        Function mapping a configuration vector [x1, y1, x2, y2] to the
+        corresponding local energy.
+    """
+    if alpha <= 0.0:
+        raise ValueError("alpha must be positive.")
+    if beta <= 0.0:
+        raise ValueError("beta must be positive.")
+
+    def local_energy(r: np.ndarray) -> float:
+        """
+        Evaluate the local energy at a given many-body configuration.
+        """
+        dx = r[0] - r[2]
+        dy = r[1] - r[3]
+        r12 = math.sqrt(dx * dx + dy * dy)
+
+        if r12 <= hard_sphere_diameter:
+            return np.inf
+
+        r_sq = r[0] ** 2 + r[1] ** 2 + r[2] ** 2 + r[3] ** 2
+
+        b = 1.0 + beta * r12
+        f = 1.0 / (b * b)
+
+        # Gaussian contribution combined with the harmonic trap.
+        e_onebody = 2.0 * alpha + r_sq * (0.5 - 0.5 * alpha ** 2)
+
+        # Correlation correction from the Jastrow factor.
+        e_jastrow = alpha * r12 * f - f / r12 + 2.0 * beta * f / b - f * f
+
+        return e_onebody + e_jastrow
+
+    return local_energy
+
