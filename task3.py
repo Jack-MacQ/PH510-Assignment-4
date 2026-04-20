@@ -290,3 +290,44 @@ def bosons_local_energy(
 
     return local_energy
 
+
+# ---------------------------------------------------------------------------
+# Statistical uncertainty estimate from correlated Monte Carlo samples
+# ---------------------------------------------------------------------------
+
+def blocking_standard_error(
+    values: np.ndarray,
+    block_size: int,
+) -> Tuple[float, int]:
+    """
+    Estimate the standard error of the mean by block averaging.
+
+    Successive Metropolis samples are correlated, so the naive
+    sigma/sqrt(N) estimate can underestimate the true uncertainty. Block
+    averaging reduces this problem by coarse-graining the Markov chain into
+    approximately independent block means.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Sequence of sampled observable values.
+    block_size : int
+        Number of consecutive samples grouped into one block.
+
+    Returns
+    -------
+    tuple[float, int]
+        Estimated standard error of the mean and the number of complete
+        blocks used in the estimate.
+    """
+    if block_size < 1:
+        raise ValueError("block_size must be at least 1.")
+    n_blocks = values.size // block_size
+    if n_blocks < 2:
+        raise ValueError("Need at least two complete blocks.")
+    trimmed = values[: n_blocks * block_size]
+    block_means = trimmed.reshape(n_blocks, block_size).mean(axis=1)
+    std_error = float(np.sqrt(np.var(block_means, ddof=1) / n_blocks))
+    return std_error, n_blocks
+
+
