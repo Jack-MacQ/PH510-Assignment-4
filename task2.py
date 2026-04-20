@@ -4,7 +4,19 @@ Variational Monte Carlo study of the hydrogen 1s ground state.
 
 This script applies the Variational Monte Carlo (VMC) method to the
 hydrogen 1s radial problem using a trial wavefunction with variational
-parameter alpha. 
+parameter alpha. For each chosen alpha value, a Metropolis random walk
+is used to sample the radial probability distribution, from which the
+local energy, energy expectation value, variance, and statistical
+uncertainty are estimated.
+
+The code performs a scan over positive alpha values, identifies the
+parameter giving the lowest energy and variance, writes a formatted
+summary of the results to file, and produces plots of energy and
+variance as functions of alpha.
+
+For the exact hydrogen ground state, the optimal value is alpha = 1,
+for which the ground-state energy is -0.5 Hartree and the local-energy
+variance is zero.
 
 This script extends the Task 1 VMC engine to carry out a systematic
 parameter scan for ground-state optimisation.
