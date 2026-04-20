@@ -285,3 +285,79 @@ def run_vmc(config: VMCConfig, alpha: float) -> VMCResult:
         n_blocks=n_blocks,
     )
 
+
+def scan_alpha(alpha_values: np.ndarray, base_seed: int = 42) -> list[VMCResult]:
+    """
+    Run the VMC calculation over a range of alpha values.
+
+    A different random seed is used for each alpha so that neighbouring
+    points in the scan do not reuse the same random sequence.
+
+    Parameters
+    ----------
+    alpha_values : numpy.ndarray
+        Array of alpha values to test.
+    base_seed : int, optional
+        Starting seed for the scan.
+
+    Returns
+    -------
+    list[VMCResult]
+        Results for each alpha value in the scan.
+    """
+    results: list[VMCResult] = []
+
+    for i, alpha in enumerate(alpha_values):
+        config = VMCConfig(
+            n_samples=100_000,
+            n_equilibration=10_000,
+            decorrelation_steps=5,
+            proposal_width=1.0 / alpha,
+            initial_position=1.0 / alpha,
+            seed=base_seed + i,
+            block_size=100,
+        )
+        results.append(run_vmc(config, alpha))
+
+    return results
+
+
+def print_summary(results: list[VMCResult]) -> None:
+    """
+    Print a formatted summary table for the alpha scan.
+
+    The table lists the energy, estimated uncertainty, variance, and
+    acceptance rate for each alpha, then highlights the best-energy and
+    lowest-variance cases.
+    """
+    print("=" * 86)
+    print("PH510 Assignment 5 - Task 2")
+    print("Hydrogen 1s ground state from Variational Monte Carlo")
+    print("=" * 86)
+    print(
+        f"{'alpha':>8}  {'energy / Ha':>16}  {'std err':>12}  "
+        f"{'variance / Ha^2':>18}  {'acceptance':>11}"
+    )
+    print("-" * 86)
+
+    for res in results:
+        print(
+            f"{res.alpha:8.4f}  {res.energy:16.8f}  {res.std_error:12.4e}  "
+            f"{res.variance:18.8e}  {res.acceptance_rate:10.2%}"
+        )
+
+    best_energy = min(results, key=lambda item: item.energy)
+    best_variance = min(results, key=lambda item: item.variance)
+
+    print("-" * 86)
+    print("Best energy:")
+    print(
+        f"  alpha = {best_energy.alpha:.6f}, "
+        f"E = {best_energy.energy:.8f} +/- {best_energy.std_error:.2e} Ha"
+    )
+    print("Lowest variance:")
+    print(
+        f"  alpha = {best_variance.alpha:.6f}, "
+        f"Var = {best_variance.variance:.8e} Ha^2"
+    )
+    print("Exact hydrogen ground-state energy: -0.50000000 Ha")
