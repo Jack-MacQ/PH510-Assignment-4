@@ -363,6 +363,51 @@ def print_summary(results: list[VMCResult]) -> None:
     print("Exact hydrogen ground-state energy: -0.50000000 Ha")
 
 
+def save_results_txt(
+    results: list[VMCResult],
+    filename: str = "task2_results.txt",
+) -> None:
+    """
+    Save the formatted alpha-scan summary to a text file.
+
+    This writes the same information shown on screen to a plain-text file,
+    which can be used as a record of the scan or as a source for tables
+    in the report.
+    """
+    with open(filename, "w", encoding="utf-8") as file_out:
+        file_out.write("=" * 86 + "\n")
+        file_out.write("PH510 Assignment 5 - Task 2\n")
+        file_out.write("Hydrogen 1s ground state from Variational Monte Carlo\n")
+        file_out.write("=" * 86 + "\n")
+        file_out.write(
+            f"{'alpha':>8}  {'energy / Ha':>16}  {'std err':>12}  "
+            f"{'variance / Ha^2':>18}  {'acceptance':>11}\n"
+        )
+        file_out.write("-" * 86 + "\n")
+
+        for res in results:
+            file_out.write(
+                f"{res.alpha:8.4f}  {res.energy:16.8f}  {res.std_error:12.4e}  "
+                f"{res.variance:18.8e}  {res.acceptance_rate:10.2%}\n"
+            )
+
+        best_energy = min(results, key=lambda item: item.energy)
+        best_variance = min(results, key=lambda item: item.variance)
+
+        file_out.write("-" * 86 + "\n")
+        file_out.write("Best energy:\n")
+        file_out.write(
+            f"  alpha = {best_energy.alpha:.6f}, "
+            f"E = {best_energy.energy:.8f} +/- {best_energy.std_error:.2e} Ha\n"
+        )
+        file_out.write("Lowest variance:\n")
+        file_out.write(
+            f"  alpha = {best_variance.alpha:.6f}, "
+            f"Var = {best_variance.variance:.8e} Ha^2\n"
+        )
+        file_out.write("Exact hydrogen ground-state energy: -0.50000000 Ha\n")
+
+
 def plot_results(results: list[VMCResult]) -> None:
     """
     Plot the energy and variance as functions of alpha.
