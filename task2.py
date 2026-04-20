@@ -55,6 +55,7 @@ class VMCConfig:
     block_size: int = 100
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass(frozen=True)
 class VMCResult:
     """Results and sampling statistics from one VMC calculation."""
@@ -69,6 +70,7 @@ class VMCResult:
     n_blocks: int
 
 
+# pylint: disable=too-few-public-methods
 class MetropolisSampler1D:
     """
     One-dimensional Metropolis sampler based on log-probabilities.
@@ -215,6 +217,7 @@ def hydrogen_local_energy(alpha: float) -> ArrayFunc:
     return local_energy
 
 
+# pylint: disable=too-many-locals
 def run_vmc(config: VMCConfig, alpha: float) -> VMCResult:
     """
     Run one VMC calculation for a given alpha.
