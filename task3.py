@@ -4,7 +4,26 @@ Variational Monte Carlo study of two hard-sphere bosons in a 2D harmonic trap.
 
 This script applies the Variational Monte Carlo (VMC) method to estimate
 the ground-state energy of two identical bosons confined in a
-two-dimensional isotropic harmonic oscillator potential.
+two-dimensional isotropic harmonic oscillator potential. The particles are
+modelled as hard spheres of diameter a, so configurations with
+inter-particle separation r12 <= a are forbidden.
+
+The variational trial wavefunction is written as a product of a Gaussian
+one-body factor and a two-body Jastrow correlation factor,
+
+    Psi_T(R, alpha, beta) = exp(-alpha/2 * |R|^2 + r12 / (1 + beta * r12)),
+
+where R = (r1, r2) denotes the full four-dimensional configuration,
+|R|^2 = r1^2 + r2^2, and r12 = |r1 - r2|. The parameter alpha controls
+the overall oscillator length scale, while beta controls the strength of
+the correlation correction.
+
+For this trial state, the local energy is evaluated analytically. The VMC
+calculation samples the probability density |Psi_T|^2 by a Metropolis
+random walk in the full configuration space (x1, y1, x2, y2). A scan over
+the variational parameters (alpha, beta) is then used to identify the
+lowest-energy state accessible within this trial family, followed by a
+higher-statistics run at the optimal parameters.
 
 Copyright (c) 2026 Jack MacQuarrie
 
@@ -696,7 +715,7 @@ def main() -> None:
     Jastrow correction and recover the pure Gaussian form.
     """
     alpha_values = np.linspace(0.5, 1.5, 11)
-    beta_values = np.array([0.1, 0.2, 0.4, 0.6, 1.0, 2.0, 3.5, 5.0])
+    beta_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0, 2.0, 3.5, 5.0])
 
     print("Running (alpha, beta) scan ...")
     results = scan_alpha_beta(alpha_values, beta_values)
@@ -704,6 +723,10 @@ def main() -> None:
     plot_results(results, alpha_values, beta_values)
 
     best = min(results, key=lambda r: r.energy)
+
+    if np.isclose(best.beta, beta_values[-1]):
+        print("\nWARNING: Best beta is at the upper edge of the scan.")
+        print("The true minimum may lie at larger beta.")
 
     print("\nHigh-statistics run at best parameters ...")
     config_final = BosonsConfig(
