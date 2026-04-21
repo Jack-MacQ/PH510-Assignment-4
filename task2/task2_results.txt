@@ -1,5 +1,5 @@
 ======================================================================================
-PH510 Assignment 5 - Task 2
+PH510 Assignment 4 - Task 2
 Hydrogen 1s ground state from Variational Monte Carlo
 ======================================================================================
    alpha       energy / Ha       std err     variance / Ha^2   acceptance

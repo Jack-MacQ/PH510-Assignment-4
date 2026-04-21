@@ -1,5 +1,5 @@
 """
-PH510 Assignment 5 - Task 2
+PH510 Assignment 4 - Task 2
 Variational Monte Carlo study of the hydrogen 1s ground state.
 
 This script applies the Variational Monte Carlo (VMC) method to the
@@ -27,6 +27,7 @@ This code is released under the MIT License. See the LICENSE file in the
 repository for details.
 
 Python Version: 3.9.21
+Pylint Score: 10/10
 """
 
 from __future__ import annotations
@@ -346,7 +347,7 @@ def print_summary(results: list[VMCResult]) -> None:
     lowest-variance cases.
     """
     print("=" * 86)
-    print("PH510 Assignment 5 - Task 2")
+    print("PH510 Assignment 4 - Task 2")
     print("Hydrogen 1s ground state from Variational Monte Carlo")
     print("=" * 86)
     print(
@@ -391,7 +392,7 @@ def save_results_txt(
     """
     with open(filename, "w", encoding="utf-8") as file_out:
         file_out.write("=" * 86 + "\n")
-        file_out.write("PH510 Assignment 5 - Task 2\n")
+        file_out.write("PH510 Assignment 4 - Task 2\n")
         file_out.write("Hydrogen 1s ground state from Variational Monte Carlo\n")
         file_out.write("=" * 86 + "\n")
         file_out.write(
