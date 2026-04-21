@@ -36,6 +36,7 @@ This code is released under the MIT License. See the LICENSE file in the
 repository for details.
 
 Python Version: 3.9.21
+Pylint Score: 10/10
 """
 
 from __future__ import annotations
