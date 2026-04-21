@@ -17,7 +17,11 @@ scaling. All figures and summary data are written to the directory
 for convenient inclusion in the report.
 
 Copyright (c) 2026 Jack MacQuarrie
-MIT License
+
+This code is released under the MIT License. See the LICENSE file in the
+repository for details.
+
+Python Version: 3.9.21
 """
 
 from __future__ import annotations
