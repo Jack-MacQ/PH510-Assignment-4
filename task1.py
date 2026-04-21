@@ -1,5 +1,5 @@
 """
-PH510 Assignment 5 - Task 1
+PH510 Assignment 4 - Task 1
 Variational Monte Carlo (VMC) engine implementation.
 
 This script implements a general Variational Monte Carlo framework for
@@ -30,6 +30,7 @@ This code is released under the MIT License. See the LICENSE file in the
 repository for details.
 
 Python Version: 3.9.21
+Pylint Score: 10/10
 """
 
 from __future__ import annotations
@@ -364,7 +365,7 @@ def main() -> None:
     result = hydrogen_demo(alpha)
 
     print("=" * 60)
-    print("PH510 Assignment 5 - Task 1")
+    print("PH510 Assignment 4 - Task 1")
     print("Variational Monte Carlo engine")
     print("Hydrogen 1s demonstration")
     print("=" * 60)
