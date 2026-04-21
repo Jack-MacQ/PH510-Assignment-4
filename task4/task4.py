@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 
@@ -52,6 +53,12 @@ from mpi4py import MPI  # pylint: disable=no-name-in-module
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # pylint: disable=wrong-import-position,ungrouped-imports
+
+FIG_DIR = "Figures"
+DATA_DIR = "Data"
+
+os.makedirs(FIG_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -780,7 +787,10 @@ def plot_results(
     plt.title("Boson VMC energy surface  [parallel Task 4]")
     plt.legend(fontsize=9)
     plt.tight_layout()
-    plt.savefig(f"task4_energy_surface{suffix}.png", dpi=300)
+    plt.savefig(
+        os.path.join(FIG_DIR, f"task4_energy_surface{suffix}.png"),
+        dpi=300,
+    )
     plt.close()
 
     _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
@@ -820,7 +830,10 @@ def plot_results(
     ax2.legend()
 
     plt.tight_layout()
-    plt.savefig(f"task4_energy_slices{suffix}.png", dpi=300)
+    plt.savefig(
+        os.path.join(FIG_DIR, f"task4_energy_slices{suffix}.png"),
+        dpi=300,
+    )
     plt.close()
 
 
@@ -930,13 +943,13 @@ def main() -> None:
             final,
             size,
             timing,
-            filename=f"task4_results{suffix}.txt",
+            filename=os.path.join(DATA_DIR, f"task4_results{suffix}.txt"),
         )
         plot_results(scan_results, alpha_values, beta_values, suffix=suffix)
         print(
-            f"\nOutput written: task4_results{suffix}.txt, "
-            f"task4_energy_surface{suffix}.png, "
-            f"task4_energy_slices{suffix}.png"
+            f"\nOutput written: {os.path.join(DATA_DIR, f'task4_results{suffix}.txt')}, "
+            f"{os.path.join(FIG_DIR, f'task4_energy_surface{suffix}.png')}, "
+            f"{os.path.join(FIG_DIR, f'task4_energy_slices{suffix}.png')}"
         )
 
 

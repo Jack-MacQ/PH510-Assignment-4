@@ -48,5 +48,5 @@ echo
 echo "===================================="
 echo "All runs complete."
 echo "Output files produced:"
-ls -lh task4_results_P*.txt task4_energy_surface_P*.png task4_energy_slices_P*.png
+ls -lh Data/task4_results_P*.txt Figures/task4_energy_surface_P*.png Figures/task4_energy_slices_P*.png
 echo "===================================="
