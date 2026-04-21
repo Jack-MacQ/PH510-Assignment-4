@@ -439,3 +439,150 @@ def run_bosons_vmc(
         acceptance_rate=acceptance_rate,
         n_samples=config.n_samples,
     )
+
+
+# ---------------------------------------------------------------------------
+# MPI-parallel parameter scan
+# ---------------------------------------------------------------------------
+
+def parallel_scan_alpha_beta(
+    alpha_values: np.ndarray,
+    beta_values: np.ndarray,
+    comm: MPI.Comm,
+    base_seed: int = 42,
+) -> list:
+    """
+    Distribute the full (alpha, beta) parameter scan across MPI ranks.
+
+    The parameter sweep is embarrassingly parallel: each rank evaluates a
+    different subset of grid points independently, and the results are
+    gathered only after the local work is complete.
+
+    Rank 0 returns the complete ordered results list. All other ranks
+    return an empty list.
+    """
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    n_beta = len(beta_values)
+
+    all_pairs = [
+        (
+            i,
+            j,
+            float(alpha_values[i]),
+            float(beta_values[j]),
+            base_seed + i * n_beta + j,
+        )
+        for i in range(len(alpha_values))
+        for j in range(n_beta)
+    ]
+
+    n_total = len(all_pairs)
+    block = n_total // size
+    remainder = n_total % size
+    start = rank * block + min(rank, remainder)
+    end = start + block + (1 if rank < remainder else 0)
+    local_pairs = all_pairs[start:end]
+
+    local_results = []
+    for ai, bj, alpha, beta, seed in local_pairs:
+        config = BosonsConfig(
+            n_samples=50_000,
+            n_equilibration=5_000,
+            decorrelation_steps=5,
+            proposal_width=0.8 / math.sqrt(alpha),
+            seed=seed,
+            block_size=100,
+        )
+        local_results.append((ai * n_beta + bj, run_bosons_vmc(config, alpha, beta)))
+
+    all_gathered = comm.gather(local_results, root=0)
+
+    if rank == 0:
+        flat = [item for sublist in all_gathered for item in sublist]
+        flat.sort(key=lambda x: x[0])
+        return [result for _, result in flat]
+
+    return []
+
+
+# ---------------------------------------------------------------------------
+# MPI-parallel final production run
+# ---------------------------------------------------------------------------
+
+def run_parallel_final_vmc(
+    alpha: float,
+    beta: float,
+    n_samples_total: int,
+    comm: MPI.Comm,
+    base_seed: int = 1729,
+) -> Optional[BosonsResult]:
+    """
+    Run the final high-statistics VMC calculation in parallel.
+
+    Each MPI rank evolves an independent Markov chain at the same
+    variational parameters. The local-energy arrays are gathered on rank 0,
+    concatenated, and used to evaluate the final mean energy, variance, and
+    blocked standard error. The final acceptance rate is computed from the
+    total accepted and attempted moves summed across all ranks.
+
+    Parameters
+    ----------
+    alpha : float
+        Best Gaussian variational parameter from the scan.
+    beta : float
+        Best Jastrow variational parameter from the scan.
+    n_samples_total : int
+        Total requested number of samples across all ranks.
+    comm : MPI.Comm
+        MPI communicator.
+    base_seed : int, optional
+        Base seed for the independent chains. Rank k uses base_seed + k,
+        ensuring each chain is uncorrelated.
+
+    Returns
+    -------
+    BosonsResult or None
+        Rank 0 returns the combined result. Other ranks return None.
+    """
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    n_local = n_samples_total // size + (n_samples_total % size if rank == 0 else 0)
+
+    config = BosonsConfig(
+        n_samples=n_local,
+        n_equilibration=10_000,
+        decorrelation_steps=5,
+        proposal_width=0.8 / math.sqrt(alpha),
+        seed=base_seed + rank,
+        block_size=200,
+    )
+
+    local_energies, accepted_moves_local, total_moves_local = _run_vmc_collect(
+        config, alpha, beta
+    )
+
+    all_energies = comm.gather(local_energies, root=0)
+    accepted_total = comm.reduce(accepted_moves_local, op=MPI.SUM, root=0)
+    moves_total = comm.reduce(total_moves_local, op=MPI.SUM, root=0)
+
+    if rank == 0:
+        combined = np.concatenate(all_energies)
+        energy = float(np.mean(combined))
+        variance = float(np.var(combined, ddof=1))
+        std_error, _ = blocking_standard_error(combined, config.block_size)
+        acceptance_rate = accepted_total / moves_total if moves_total > 0 else 0.0
+
+        return BosonsResult(
+            alpha=alpha,
+            beta=beta,
+            energy=energy,
+            variance=variance,
+            std_error=std_error,
+            acceptance_rate=float(acceptance_rate),
+            n_samples=len(combined),
+        )
+
+    return None
+
