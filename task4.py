@@ -46,9 +46,11 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 
 import matplotlib
-matplotlib.use("Agg")
 import numpy as np
 from mpi4py import MPI  # pylint: disable=no-name-in-module
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt  # pylint: disable=wrong-import-position,ungrouped-imports
 
 
