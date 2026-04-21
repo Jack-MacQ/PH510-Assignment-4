@@ -586,3 +586,223 @@ def run_parallel_final_vmc(
 
     return None
 
+
+# ---------------------------------------------------------------------------
+# Rank-0 output and file generation
+# ---------------------------------------------------------------------------
+
+def print_summary(results: list, n_procs: int) -> None:
+    """
+    Print a formatted table of the parallel parameter-scan results.
+
+    The layout is intentionally close to the Task 3 serial output so that
+    the parallel and serial calculations can be compared directly.
+    """
+    best_energy = min(results, key=lambda r: r.energy)
+    best_variance = min(results, key=lambda r: r.variance)
+
+    header = (
+        f"{'alpha':>8}  {'beta':>8}  {'energy / Ha':>14}  "
+        f"{'std err':>12}  {'variance / Ha^2':>18}  {'accept':>8}"
+    )
+    separator = "-" * len(header)
+
+    print("=" * len(header))
+    print(f"PH510 Assignment 4 - Task 4   ({n_procs} MPI ranks)")
+    print("Two hard-sphere bosons in a 2D harmonic trap  [parallel]")
+    print("=" * len(header))
+    print(header)
+    print(separator)
+
+    for res in results:
+        print(
+            f"{res.alpha:8.4f}  {res.beta:8.4f}  {res.energy:14.8f}  "
+            f"{res.std_error:12.4e}  {res.variance:18.8e}  "
+            f"{res.acceptance_rate:7.2%}"
+        )
+
+    print(separator)
+    print("Best energy:")
+    print(
+        f"  alpha = {best_energy.alpha:.4f}, beta = {best_energy.beta:.4f}, "
+        f"E = {best_energy.energy:.6f} +/- {best_energy.std_error:.2e} Ha"
+    )
+    print("Lowest variance:")
+    print(
+        f"  alpha = {best_variance.alpha:.4f}, beta = {best_variance.beta:.4f}, "
+        f"Var = {best_variance.variance:.4e} Ha^2"
+    )
+
+
+def print_final_result(
+    result: BosonsResult,
+    n_procs: int,
+    timing: TimingResult,
+) -> None:
+    """
+    Print the final high-statistics parallel result together with timings.
+    """
+    print("=" * 60)
+    print(f"PH510 Assignment 4 - Task 4  -  Best solution  ({n_procs} ranks)")
+    print("=" * 60)
+    print(f"alpha            = {result.alpha:.4f}")
+    print(f"beta             = {result.beta:.4f}")
+    print(f"Energy           = {result.energy:+.6f} Ha")
+    print(f"Std. error       = {result.std_error:.2e} Ha")
+    print(f"Variance         = {result.variance:.4e} Ha^2")
+    print(f"Acceptance rate  = {result.acceptance_rate:.2%}")
+    print(f"Samples          = {result.n_samples:,}")
+    print(f"Scan wall time   = {timing.scan_time:.6f} s")
+    print(f"Final wall time  = {timing.final_time:.6f} s")
+
+
+def save_results_txt(
+    results: list,
+    final: BosonsResult,
+    n_procs: int,
+    timing: TimingResult,
+    filename: str = "task4_results.txt",
+) -> None:
+    """
+    Save the scan summary, final production result, and timing information.
+
+    This provides a permanent record of the physical results together with
+    the measured runtime of the parallel scan and the final production run.
+    """
+    best_energy = min(results, key=lambda r: r.energy)
+    best_variance = min(results, key=lambda r: r.variance)
+
+    with open(filename, "w", encoding="utf-8") as fout:
+        fout.write(f"PH510 Assignment 4 - Task 4  ({n_procs} MPI ranks)\n")
+        fout.write("Two hard-sphere bosons in a 2D harmonic trap  [parallel]\n\n")
+        fout.write(f"Parameter scan wall time   = {timing.scan_time:.6f} s\n")
+        fout.write(f"Final production wall time = {timing.final_time:.6f} s\n\n")
+        fout.write(
+            f"{'alpha':>8}  {'beta':>8}  {'energy / Ha':>14}  "
+            f"{'std err':>12}  {'variance / Ha^2':>18}  {'accept':>8}\n"
+        )
+        fout.write("-" * 76 + "\n")
+        for res in results:
+            fout.write(
+                f"{res.alpha:8.4f}  {res.beta:8.4f}  {res.energy:14.8f}  "
+                f"{res.std_error:12.4e}  {res.variance:18.8e}  "
+                f"{res.acceptance_rate:7.2%}\n"
+            )
+        fout.write("-" * 76 + "\n")
+        fout.write(
+            f"Best energy:  alpha={best_energy.alpha:.4f}  "
+            f"beta={best_energy.beta:.4f}  "
+            f"E={best_energy.energy:.6f} +/- {best_energy.std_error:.2e} Ha\n"
+        )
+        fout.write(
+            f"Lowest variance:  alpha={best_variance.alpha:.4f}  "
+            f"beta={best_variance.beta:.4f}  "
+            f"Var={best_variance.variance:.4e} Ha^2\n\n"
+        )
+        fout.write("Final high-statistics parallel run:\n")
+        fout.write(f"  alpha            = {final.alpha:.4f}\n")
+        fout.write(f"  beta             = {final.beta:.4f}\n")
+        fout.write(f"  Energy           = {final.energy:+.6f} Ha\n")
+        fout.write(f"  Std. error       = {final.std_error:.2e} Ha\n")
+        fout.write(f"  Variance         = {final.variance:.4e} Ha^2\n")
+        fout.write(f"  Acceptance rate  = {final.acceptance_rate:.2%}\n")
+        fout.write(f"  Samples          = {final.n_samples:,}\n")
+        fout.write(f"  MPI ranks used   = {n_procs}\n")
+
+
+def plot_results(
+    results: list,
+    alpha_values: np.ndarray,
+    beta_values: np.ndarray,
+    suffix: str = "",
+) -> None:
+    """
+    Plot the energy surface and one-dimensional slices through the minimum.
+
+    The plots are written directly to file rather than displayed
+    interactively, which is necessary when running under MPI.
+    """
+    n_alpha = len(alpha_values)
+    n_beta = len(beta_values)
+    energy_grid = np.array([r.energy for r in results]).reshape(n_alpha, n_beta)
+
+    best = min(results, key=lambda r: r.energy)
+    best_i = int(np.argmin(np.abs(alpha_values - best.alpha)))
+    best_j = int(np.argmin(np.abs(beta_values - best.beta)))
+
+    plt.figure(figsize=(8, 6))
+    levels = np.linspace(energy_grid.min(), energy_grid.max(), 20)
+    cp = plt.contourf(
+        beta_values,
+        alpha_values,
+        energy_grid,
+        levels=levels,
+        cmap="viridis",
+    )
+    plt.colorbar(cp, label="Energy / Hartree")
+    plt.contour(
+        beta_values,
+        alpha_values,
+        energy_grid,
+        levels=levels,
+        colors="white",
+        alpha=0.3,
+    )
+    plt.plot(
+        best.beta,
+        best.alpha,
+        "r*",
+        markersize=14,
+        label=(
+            rf"min E = {best.energy:.4f} Ha "
+            rf"($\alpha$={best.alpha:.3f}, $\beta$={best.beta:.3f})"
+        ),
+    )
+    plt.xlabel(r"$\beta$")
+    plt.ylabel(r"$\alpha$")
+    plt.title("Boson VMC energy surface  [parallel Task 4]")
+    plt.legend(fontsize=9)
+    plt.tight_layout()
+    plt.savefig(f"task4_energy_surface{suffix}.png", dpi=300)
+    plt.close()
+
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    e_vs_alpha = energy_grid[:, best_j]
+    err_vs_alpha = np.array(
+        [results[i * n_beta + best_j].std_error for i in range(n_alpha)]
+    )
+    ax1.errorbar(alpha_values, e_vs_alpha, yerr=err_vs_alpha, fmt="o-", capsize=4)
+    ax1.axvline(
+        best.alpha,
+        color="r",
+        linestyle="--",
+        label=rf"$\alpha_\mathrm{{opt}}$ = {best.alpha:.3f}",
+    )
+    ax1.set_xlabel(r"$\alpha$")
+    ax1.set_ylabel("Energy / Hartree")
+    ax1.set_title(rf"Energy vs $\alpha$  ($\beta$ = {beta_values[best_j]:.3f})")
+    ax1.grid(True, linestyle=":")
+    ax1.legend()
+
+    e_vs_beta = energy_grid[best_i, :]
+    err_vs_beta = np.array(
+        [results[best_i * n_beta + j].std_error for j in range(n_beta)]
+    )
+    ax2.errorbar(beta_values, e_vs_beta, yerr=err_vs_beta, fmt="o-", capsize=4)
+    ax2.axvline(
+        best.beta,
+        color="r",
+        linestyle="--",
+        label=rf"$\beta_\mathrm{{opt}}$ = {best.beta:.3f}",
+    )
+    ax2.set_xlabel(r"$\beta$")
+    ax2.set_ylabel("Energy / Hartree")
+    ax2.set_title(rf"Energy vs $\beta$  ($\alpha$ = {alpha_values[best_i]:.3f})")
+    ax2.grid(True, linestyle=":")
+    ax2.legend()
+
+    plt.tight_layout()
+    plt.savefig(f"task4_energy_slices{suffix}.png", dpi=300)
+    plt.close()
+
