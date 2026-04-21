@@ -438,7 +438,7 @@ def plot_results(results: list[VMCResult]) -> None:
 
     plt.figure(figsize=(8, 5))
     plt.errorbar(alpha_vals, energies, yerr=errors, fmt="o-", capsize=3)
-    plt.axhline(-0.5, linestyle="--", label="Exact energy")
+    plt.axhline(-0.5, linestyle="--", color="red", label="Exact energy")
     plt.xlabel(r"$\alpha$")
     plt.ylabel("Energy / Hartree")
     plt.title("Hydrogen 1s VMC energy")
