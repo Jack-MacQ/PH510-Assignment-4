@@ -1,4 +1,4 @@
-PH510 Assignment 5 - Task 3
+PH510 Assignment 4 - Task 3
 Two hard-sphere bosons in a 2D harmonic trap
 
    alpha      beta     energy / Ha       std err     variance / Ha^2    accept

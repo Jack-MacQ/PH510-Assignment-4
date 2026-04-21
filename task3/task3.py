@@ -31,6 +31,7 @@ This code is released under the MIT License. See the LICENSE file in the
 repository for details.
 
 Python Version: 3.9.21
+Pylint Score: 10/10
 """
 
 from __future__ import annotations
@@ -518,7 +519,7 @@ def print_summary(results: list[BosonsResult]) -> None:
     separator = "-" * len(header)
 
     print("=" * len(header))
-    print("PH510 Assignment 5 - Task 3")
+    print("PH510 Assignment 4 - Task 3")
     print("Two hard-sphere bosons in a 2D harmonic trap")
     print("=" * len(header))
     print(header)
@@ -559,7 +560,7 @@ def save_results_txt(
     best_variance = min(results, key=lambda r: r.variance)
 
     with open(filename, "w", encoding="utf-8") as fout:
-        fout.write("PH510 Assignment 5 - Task 3\n")
+        fout.write("PH510 Assignment 4 - Task 3\n")
         fout.write("Two hard-sphere bosons in a 2D harmonic trap\n\n")
         fout.write(
             f"{'alpha':>8}  {'beta':>8}  {'energy / Ha':>14}  "
@@ -742,7 +743,7 @@ def main() -> None:
     save_results_txt(results, final)
 
     print("=" * 60)
-    print("PH510 Assignment 5 - Task 3  -  Best solution")
+    print("PH510 Assignment 4 - Task 3  -  Best solution")
     print("=" * 60)
     print(f"alpha            = {final.alpha:.4f}")
     print(f"beta             = {final.beta:.4f}")
