@@ -15,6 +15,21 @@ The variational trial state is
 where R = (r1, r2) is the four-dimensional configuration, and
 r12 = |r1 - r2|.
 
+Parallelisation is implemented at two levels:
+
+1. Parameter-scan parallelism.
+   The full (alpha, beta) grid is divided across MPI ranks. Each rank
+   evaluates its assigned subset independently, so the coarse scan is
+   embarrassingly parallel.
+
+2. Production-run parallelism.
+   After the best parameters are identified, a higher-statistics calculation
+   is carried out by running independent Markov chains on all ranks and
+   combining the samples on rank 0.
+
+The parallel output can be compared directly with Task 3 to confirm that
+the same ground-state estimate is reproduced within statistical uncertainty.
+
 Copyright (c) 2026 Jack MacQuarrie
 
 This code is released under the MIT License. See the LICENSE file in the
@@ -806,3 +821,122 @@ def plot_results(
     plt.savefig(f"task4_energy_slices{suffix}.png", dpi=300)
     plt.close()
 
+
+# ---------------------------------------------------------------------------
+# Command-line interface
+# ---------------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments.
+
+    The --nprocs flag is used only for output-file naming. MPI itself
+    determines the true process count from mpirun.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments with attribute nprocs.
+    """
+    parser = argparse.ArgumentParser(
+        description="Task 4: MPI-parallel VMC for two hard-sphere bosons."
+    )
+    parser.add_argument(
+        "--nprocs",
+        type=int,
+        default=1,
+        help="Number of MPI processes, used only for output file labelling.",
+    )
+    return parser.parse_args()
+
+
+# ---------------------------------------------------------------------------
+# Main MPI-parallel workflow
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """
+    Run the full Task 4 parallel VMC workflow.
+
+    The parameter scan is distributed across MPI ranks. Once the best
+    variational parameters have been identified on rank 0, they are
+    broadcast to all ranks and used in a final parallel high-statistics
+    calculation. Only rank 0 performs formatted output and plotting.
+    """
+    args = parse_args()
+    suffix = f"_P{args.nprocs}"
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    alpha_values = np.linspace(0.5, 1.5, 11)
+    beta_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0, 2.0, 3.5, 5.0])
+
+    if rank == 0:
+        print(f"Running parallel (alpha, beta) scan on {size} MPI rank(s) ...")
+
+    comm.Barrier()
+    scan_t0 = MPI.Wtime()
+    scan_results = parallel_scan_alpha_beta(
+        alpha_values,
+        beta_values,
+        comm,
+        base_seed=42,
+    )
+    comm.Barrier()
+    scan_time = MPI.Wtime() - scan_t0
+
+    if rank == 0:
+        print_summary(scan_results, size)
+        best = min(scan_results, key=lambda r: r.energy)
+
+        if np.isclose(best.beta, beta_values[-1]):
+            print("\nWARNING: Best beta is at the upper edge of the scan.")
+            print("The true minimum may lie at larger beta.\n")
+
+        best_params = (best.alpha, best.beta)
+    else:
+        best_params = None
+
+    best_params = comm.bcast(best_params, root=0)
+    best_alpha, best_beta = best_params
+
+    if rank == 0:
+        print(
+            f"\nHigh-statistics parallel run at alpha={best_alpha:.4f}, "
+            f"beta={best_beta:.4f} ..."
+        )
+
+    comm.Barrier()
+    final_t0 = MPI.Wtime()
+    final = run_parallel_final_vmc(
+        alpha=best_alpha,
+        beta=best_beta,
+        n_samples_total=200_000,
+        comm=comm,
+        base_seed=1729,
+    )
+    comm.Barrier()
+    final_time = MPI.Wtime() - final_t0
+
+    if rank == 0:
+        timing = TimingResult(scan_time=scan_time, final_time=final_time)
+        print_final_result(final, size, timing)
+        save_results_txt(
+            scan_results,
+            final,
+            size,
+            timing,
+            filename=f"task4_results{suffix}.txt",
+        )
+        plot_results(scan_results, alpha_values, beta_values, suffix=suffix)
+        print(
+            f"\nOutput written: task4_results{suffix}.txt, "
+            f"task4_energy_surface{suffix}.png, "
+            f"task4_energy_slices{suffix}.png"
+        )
+
+
+if __name__ == "__main__":
+    main()
