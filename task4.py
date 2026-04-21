@@ -873,7 +873,7 @@ def main() -> None:
     size = comm.Get_size()
 
     alpha_values = np.linspace(0.5, 1.5, 11)
-    beta_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0, 2.0, 3.5, 5.0])
+    beta_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 1.0, 2.0, 3.5, 5.0, 10.0])
 
     if rank == 0:
         print(f"Running parallel (alpha, beta) scan on {size} MPI rank(s) ...")
